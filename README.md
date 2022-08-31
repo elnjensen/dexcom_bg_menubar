@@ -20,6 +20,10 @@ I hope to submit this to the repository of xbar plugins, but until then:
 * Set your Dexcom Share username and password via accessing the plugin in the xbar interface, or by editing the script directly and changing `VAR_USERNAME` and `VAR_PASSWORD`. 
 * Optionally, set `VAR_OUTSIDE_US` to "True" if you are not in the United States. 
 
+### Known issues: 
+
+* On M1 MacBooks (with a "notch" for the camera in the menubar area), xbar may place the menubar output in the invisible notch region.  This is general xbar issue that affects all plugins.  If you start this plugin but don't see any output, try quitting xbar, removing other icons from the menu bar and re-launching xbar.  You can then re-add your other icons, which hopefully are notch-aware and will move accordingly. 
+
 Enjoy! If you have any questions or problems, please open an issue here. 
 
 
