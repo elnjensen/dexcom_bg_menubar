@@ -14,5 +14,12 @@ The design is based heavily on the [Nightscout](https://github.com/nightscout/cg
 
 ### To install: 
 
-Instructions coming soon. 
+I hope to submit this to the repository of xbar plugins, but until then: 
+
+* Copy the [Dexcom_BG.1m.py](Dexcom_BG.1m.py) script to `~/Library/Application Support/xbar/plugins/`.
+* Set your Dexcom Share username and password via accessing the plugin in the xbar interface, or by editing the script directly and changing `VAR_USERNAME` and `VAR_PASSWORD`. 
+* Optionally, set `VAR_OUTSIDE_US` to "True" if you are not in the United States. 
+
+Enjoy! If you have any questions or problems, please open an issue here. 
+
 
