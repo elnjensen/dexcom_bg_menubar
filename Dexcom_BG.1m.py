@@ -60,9 +60,15 @@ def bg_values_to_file(bg_list, filename):
     else:
         iter_list = bg_list
         
-    with open(filename, 'w') as f:
-        for b in iter_list:
-            f.write(json.dumps(b.json)+"\n")
+    try:
+        with open(filename, 'w') as f:
+            for b in iter_list:
+                f.write(json.dumps(b.json)+"\n")
+    except AttributeError:
+        # If they have an old version of pydexcom, the
+        # BG object won't have the 'json' property.
+        # If we left behind an empty file, clean it up:
+        if os.path.exists(filename): os.remove(filename)
 
             
 def bg_values_from_file(filename):
@@ -77,8 +83,10 @@ def bg_values_from_file(filename):
     b_list = []
     with open(filename, 'r') as f:
         for line in f.readlines():
-            b_list.append(GlucoseReading(json.loads(line)))
-
+            # If valid JSON, try to create a GlucoseReading:
+            json_data = json.loads(line)
+            b_list.append(GlucoseReading(json_data))
+            
     return b_list
 
         
@@ -86,11 +94,19 @@ def bg_values_from_file(filename):
 now = datetime.now()
 # See if we can get BG values from file:
 have_old_bgs = False
+# Did we get an exception when reading BGs:
+read_exception = False
 if os.path.exists(bg_filename):
-    old_bgs = bg_values_from_file(bg_filename)
-    have_old_bgs = True
-    bg_age = now - old_bgs[0].time
-    bg_age_minutes = bg_age.total_seconds()/60
+    try:
+        old_bgs = bg_values_from_file(bg_filename)
+    except Exception as bg_read_exception:
+        read_exception = bg_read_exception
+    
+    # Continue only if we successfully read:
+    if (not read_exception) and (len(old_bgs) > 2):
+        have_old_bgs = True
+        bg_age = now - old_bgs[0].time
+        bg_age_minutes = bg_age.total_seconds()/60
     
 if have_old_bgs and (bg_age_minutes < 4):
     # No need to fetch new bgs:
@@ -112,5 +128,17 @@ for i in range(len(bgs) - 1):
         # Separator to make earlier values appear in the submenu: 
         print("---")
 
-# Save BG values to file:
-bg_values_to_file(bgs, bg_filename)
+# If we encountered an exception when reading BGs, flag it:
+if read_exception:
+    print(f"Failed to read BGs from {bg_filename}:|color=red")
+    print(f"{read_exception}.|color=red")
+
+# Save BG values to file if possible. If an
+# exception is raised, flag it but exit normally,
+# since this caching isn't essential for the script
+# to work:
+try:
+    bg_values_to_file(bgs, bg_filename)
+except Exception as e:
+    print(f"Failed to write BGs to {bg_filename}:|color=red")
+    print(f"{e}.|color=red")
