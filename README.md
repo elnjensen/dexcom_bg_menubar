@@ -11,7 +11,7 @@ By default,the script runs once per minute to update the displayed age of the BG
 ### Prerequisites:
 
 * A working Python 3 installation.  While Python is no longer included by default with the Mac OS, you can install it from the Xcode command-line tools, [homebrew](https://brew.sh/), or [Anaconda](https://www.anaconda.com/).
-* The [pydexcom](https://github.com/gagebenne/pydexcom) package.  Install it with `pip3 install git+https://github.com/gagebenne/pydexcom`. 
+* The [pydexcom](https://github.com/gagebenne/pydexcom) package.  Install it with `pip install pydexcom`. 
 * A working Dexcom Share setup that is uploading your blood glucose values (or those of someone who has given you access to their data) to the cloud. 
 
 ### To install: 
