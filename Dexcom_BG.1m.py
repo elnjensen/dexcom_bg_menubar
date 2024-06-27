@@ -105,7 +105,7 @@ if os.path.exists(bg_filename):
     # Continue only if we successfully read:
     if (not read_exception) and (len(old_bgs) > 2):
         have_old_bgs = True
-        bg_age = now - old_bgs[0].time
+        bg_age = now - old_bgs[0].datetime
         bg_age_minutes = bg_age.total_seconds()/60
     
 if have_old_bgs and (bg_age_minutes < 4):
@@ -121,7 +121,7 @@ else:
 for i in range(len(bgs) - 1):
     bg = bgs[i]
     bg_diff = bg.value - bgs[i+1].value
-    time_diff = now - bg.time
+    time_diff = now - bg.datetime
     time_diff_min = time_diff.total_seconds()/60
     print(f"{bg.value} ({bg_diff:+0d}) {bg.trend_arrow} ({time_diff_min:0.0f}m)")
     if i==0:
