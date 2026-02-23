@@ -10,20 +10,25 @@
 # <xbar.version>1.0</xbar.version>
 # <xbar.author>Eric Jensen</xbar.author>
 # <xbar.author.github>elnjensen</xbar.author.github>
-# <xbar.dependencies>python</xbar.dependencies>
+# <xbar.abouturl>https://github.com/elnjensen/dexcom_bg_menubar</xbar.abouturl>
+# <xbar.image>https://raw.githubusercontent.com/elnjensen/dexcom_bg_menubar/master/Dexcom_BG_screenshot.png</xbar.image>
+# <xbar.dependencies>python, pydexcom</xbar.dependencies>
 # <xbar.desc>Displays blood glucose data from Dexcom Share</xbar.desc>
 # <xbar.var>string(VAR_USERNAME=""): Your Dexcom username.</xbar.var>
 # <xbar.var>string(VAR_PASSWORD=""): Your Dexcom password.</xbar.var>
-# <xbar.var>string(VAR_OUTSIDE_US="False"): Set to "True" if you are outside the United States.</xbar.var>
+# <xbar.var>string(VAR_REGION="us"): Set to "jp" if in Japan, or "ous" if you are in a different country outside the United States.</xbar.var>
 
-# Todo: think about better error handling for missing data
-
-import json, os
-from datetime import datetime
+import json
+import os
+import tempfile
+from datetime import datetime, timezone
+# We will do all datetime math in UTC:
+UTC = timezone.utc
 
 try:
     from pydexcom import Dexcom, GlucoseReading
-except:
+    from pydexcom.errors import AccountError, SessionError
+except ImportError:
     print("pydexcom not installed|color=red")
     print("---")
     print("Please run 'pip3 install pydexcom'.")
@@ -32,11 +37,14 @@ except:
 # Get the Dexcom Share credentials from environment variables:
 username = os.getenv('VAR_USERNAME', '')
 password = os.getenv('VAR_PASSWORD', '')
-if (os.getenv('VAR_OUTSIDE_US', '') == "True"):
-    outside_US = True
-else:
-    # Note that we are defaulting to False if var is set to invalid value.
-    outside_US = False
+# Get and validate region:
+valid_regions = ['us', 'ous', 'jp']
+region = os.getenv('VAR_REGION', 'us').lower()
+if region not in valid_regions:
+    print(f"Invalid region '{region}'|color=red")
+    print("---")
+    print(f"VAR_REGION must be one of: {', '.join(valid_regions)}")
+    exit()
 
 # Make sure we really got valid values:
 if (username == '') or (password == ''):
@@ -47,7 +55,7 @@ if (username == '') or (password == ''):
 
 
 # File for caching BG values
-bg_filename = '/tmp/latest_bg_values.json'
+bg_filename = os.path.join(tempfile.gettempdir(), 'latest_bg_values.json')
 
 def bg_values_to_file(bg_list, filename):
     '''Take a list of GlucoseReading objects, 
@@ -60,15 +68,9 @@ def bg_values_to_file(bg_list, filename):
     else:
         iter_list = bg_list
         
-    try:
-        with open(filename, 'w') as f:
-            for b in iter_list:
-                f.write(json.dumps(b.json)+"\n")
-    except AttributeError:
-        # If they have an old version of pydexcom, the
-        # BG object won't have the 'json' property.
-        # If we left behind an empty file, clean it up:
-        if os.path.exists(filename): os.remove(filename)
+    with open(filename, 'w') as f:
+        for b in iter_list:
+            f.write(json.dumps(b.json)+"\n")
 
             
 def bg_values_from_file(filename):
@@ -82,56 +84,63 @@ def bg_values_from_file(filename):
     # Reading from file
     b_list = []
     with open(filename, 'r') as f:
-        for line in f.readlines():
-            # If valid JSON, try to create a GlucoseReading:
-            json_data = json.loads(line)
-            b_list.append(GlucoseReading(json_data))
-            
+        for line in f:
+            b_list.append(GlucoseReading(json.loads(line)))
+
     return b_list
 
         
 
-now = datetime.now()
+now = datetime.now(UTC)
 # See if we can get BG values from file:
 have_old_bgs = False
-# Did we get an exception when reading BGs:
-read_exception = False
 if os.path.exists(bg_filename):
-    try:
-        old_bgs = bg_values_from_file(bg_filename)
-    except Exception as bg_read_exception:
-        read_exception = bg_read_exception
-    
-    # Continue only if we successfully read:
-    if (not read_exception) and (len(old_bgs) > 2):
-        have_old_bgs = True
-        bg_age = now - old_bgs[0].datetime
-        bg_age_minutes = bg_age.total_seconds()/60
+    old_bgs = bg_values_from_file(bg_filename)
+    have_old_bgs = True
+    bg_age = now - old_bgs[0].datetime.astimezone(UTC)
+    bg_age_minutes = bg_age.total_seconds()/60
     
 if have_old_bgs and (bg_age_minutes < 4):
     # No need to fetch new bgs:
     bgs = old_bgs
+    fetch_error = None
 else:
     # Fetch new data.
-    dexcom = Dexcom(username, password, ous=outside_US)
-    bgs = dexcom.get_glucose_readings(max_count=6)
+    try:
+        dexcom = Dexcom(username=username, password=password, region=region)
+        bgs = dexcom.get_glucose_readings(max_count=6)
+        if not bgs:
+            raise ValueError("No BG data returned from Dexcom")
+        fetch_error = None
+    except (AccountError, SessionError) as e:
+        print("Dexcom auth error|color=red")
+        print("---")
+        print("Check your username, password, and region setting.")
+        print(f"Error: {e}")
+        exit()
+    except Exception as e:
+        fetch_error = f"Fetch failed at {now.astimezone().strftime('%H:%M')}: {e}"
+        if have_old_bgs:
+            bgs = old_bgs
+        else:
+            print("No BG data available|color=red")
+            print("---")
+            print(f"Fetch failed: {e}")
+            exit()
 
 # Cycle over list to print output; even for old
 # BG data we are updating the age displayed: 
 for i in range(len(bgs) - 1):
     bg = bgs[i]
     bg_diff = bg.value - bgs[i+1].value
-    time_diff = now - bg.datetime
+    time_diff = now - bg.datetime.astimezone(UTC)
     time_diff_min = time_diff.total_seconds()/60
     print(f"{bg.value} ({bg_diff:+0d}) {bg.trend_arrow} ({time_diff_min:0.0f}m)")
     if i==0:
-        # Separator to make earlier values appear in the submenu: 
+        # Separator to make earlier values appear in the submenu:
         print("---")
-
-# If we encountered an exception when reading BGs, flag it:
-if read_exception:
-    print(f"Failed to read BGs from {bg_filename}:|color=red")
-    print(f"{read_exception}.|color=red")
+        if fetch_error:
+            print(f"{fetch_error}|color=red")
 
 # Save BG values to file if possible. If an
 # exception is raised, flag it but exit normally,
