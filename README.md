@@ -1,6 +1,6 @@
 ## Dexcom menubar
 
-This Python script is a plugin for [xbar](https://xbarapp.com/) that allows you to pull recent blood glucose values from [Dexcom Share](https://www.dexcom.com/training-videos/setting-up-dexcom-share-and-follow) and display them in the Mac menubar:
+This Python script is a plugin for [xbar](https://xbarapp.com/) or [swiftbar](https://github.com/swiftbar/SwiftBar) that allows you to pull recent blood glucose values from [Dexcom Share](https://www.dexcom.com/training-videos/setting-up-dexcom-share-and-follow) and display them in the Mac menubar:
 
 ![Image of BG value in menubar](Dexcom_BG_screenshot.png)
 
@@ -16,13 +16,13 @@ By default,the script runs once per minute to update the displayed age of the BG
 
 ### To install: 
 
-I hope to submit this to the repository of xbar plugins, but until then: 
+I plan to submit this to the repository of xbar plugins, but until then:
 
 * Copy the [Dexcom_BG.1m.py](Dexcom_BG.1m.py) script to `~/Library/Application Support/xbar/plugins/`.
 * Make the script executable by running in the Terminal: `chmod +x ~/Library/Application\ Support/xbar/plugins/Dexcom_BG.1m.py`
 * Set your Dexcom Share username and password via accessing the plugin in the xbar interface, or by editing the script directly and changing `VAR_USERNAME` and `VAR_PASSWORD`.  Be aware that your username and password will be stored on your computer in plain text, so there is a potential security risk of running this on a computer that others have access to. 
-* Optionally, set `VAR_OUTSIDE_US` to "True" if you are not in the United States. 
-* Launch xbar, and if you wish, set it to launch auomatically at login. 
+* Optionally, set `VAR_REGION` to "ous" or "jp" if you are not in the United States.
+* Launch xbar, and if you wish, set it to launch automatically at login.
 
 ### Troubleshooting: 
 
